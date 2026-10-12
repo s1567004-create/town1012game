@@ -1,0 +1,978 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>彩虹勇者：三層地下城</title>
+
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #10131a;
+  --panel: #1b202b;
+  --border: #343d4e;
+  --text: #e8edf7;
+  --muted: #9ba8bd;
+  --gold: #ffd166;
+  --green: #7cf29a;
+  --red: #ff7373;
+  --blue: #82b8ff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 20px 12px;
+  background: radial-gradient(ellipse at top, #202b3d, var(--bg) 65%);
+  color: var(--text);
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.game {
+  width: min(100%, 760px);
+  margin: auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+h1 {
+  color: var(--gold);
+  font-size: clamp(24px, 5vw, 36px);
+  margin: 0 0 8px;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 24px #0003;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stat {
+  background: #111620;
+  border: 1px solid #2b3444;
+  border-radius: 8px;
+  text-align: center;
+  padding: 12px 4px;
+}
+
+.stat-label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+
+.stat-value {
+  font-size: clamp(15px, 3.5vw, 21px);
+  font-weight: bold;
+}
+
+#hp { color: var(--green); }
+#turn { color: var(--blue); }
+#enemyCount { color: var(--red); }
+#floor { color: var(--gold); }
+
+.section-title {
+  font-size: 14px;
+  color: var(--gold);
+  margin: 0 0 12px;
+}
+
+.map-frame {
+  overflow-x: auto;
+  padding: 14px 4px;
+  text-align: center;
+  background: #0c1016;
+  border-radius: 8px;
+  border: 1px solid #30394a;
+}
+
+#map {
+  display: inline-block;
+  margin: 0;
+  font-size: clamp(13px, 2.7vw, 19px);
+  line-height: 1.55;
+  letter-spacing: 1px;
+  white-space: pre;
+  user-select: none;
+}
+
+.player-color {
+  display: inline-block;
+  font-weight: 900;
+  animation: rainbow 2s linear infinite;
+  text-shadow: 0 0 5px currentColor,
+               0 0 12px currentColor,
+               0 0 20px currentColor;
+}
+
+@keyframes rainbow {
+  0% { color: #ff0000; }
+  16% { color: #ff8800; }
+  33% { color: #ffff00; }
+  50% { color: #00ff66; }
+  66% { color: #00ccff; }
+  83% { color: #aa55ff; }
+  100% { color: #ff0000; }
+}
+
+.wall-color { color: #75839c; }
+.enemy-color {
+  color: var(--red);
+  font-weight: bold;
+  text-shadow: 0 0 8px #ff555577;
+}
+.exit-color {
+  color: var(--gold);
+  font-weight: bold;
+  text-shadow: 0 0 10px #ffd16688;
+}
+.fountain-color {
+  color: #55eaff;
+  font-weight: bold;
+  text-shadow: 0 0 8px #55eaff99;
+}
+.floor-color { color: #58667b; }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.symbol {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+#message {
+  min-height: 52px;
+  line-height: 1.8;
+  font-size: 13px;
+  white-space: pre-line;
+}
+
+.message-title {
+  display: block;
+  color: var(--gold);
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.controls-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 58px);
+  grid-template-rows: repeat(3, 52px);
+  gap: 6px;
+  justify-content: center;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.direction {
+  background: #293449;
+  color: var(--text);
+  border: 1px solid #455572;
+  border-radius: 10px;
+  font-size: 23px;
+  font-weight: bold;
+}
+
+.direction:active {
+  background: #52678b;
+  transform: scale(.94);
+}
+
+.up { grid-area: 1 / 2; }
+.left { grid-area: 2 / 1; }
+.down { grid-area: 2 / 2; }
+.right { grid-area: 2 / 3; }
+
+.keyboard-help {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 2;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 25px;
+  text-align: center;
+  padding: 2px 5px;
+  color: var(--text);
+  background: #111620;
+  border: 1px solid #45516a;
+  border-radius: 4px;
+}
+
+.action-button {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #293449;
+  color: var(--text);
+  font-weight: bold;
+}
+
+.action-button:hover { background: #394860; }
+
+.action-button.primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #10131a;
+}
+
+.action-button.primary:hover { background: #ffe09a; }
+
+.action-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.rules {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 2;
+}
+
+.rules strong { color: var(--text); }
+
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: #080b10df;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.overlay.show { display: flex; }
+
+.result-card {
+  width: min(100%, 380px);
+  padding: 28px 22px;
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid #53617a;
+  border-radius: 14px;
+}
+
+.result-card h2 {
+  color: var(--gold);
+  font-size: 28px;
+}
+
+.result-card p {
+  color: var(--muted);
+  line-height: 1.9;
+  white-space: pre-line;
+}
+
+@media (max-width: 520px) {
+  body { padding: 12px 8px; }
+  .panel { padding: 12px; }
+  .controls-layout { grid-template-columns: 1fr; }
+  .dpad {
+    grid-template-columns: repeat(3, 64px);
+    grid-template-rows: repeat(3, 52px);
+  }
+  .keyboard-help { text-align: center; }
+}
+</style>
+</head>
+
+<body>
+<main class="game">
+  <header>
+    <h1>🌈 彩虹勇者：地下城</h1>
+    <p class="subtitle">
+      RAINBOW HERO · THREE FLOORS<br>
+      探索三層地城、擊敗敵人、利用泉水恢復生命，抵達最終出口！
+    </p>
+  </header>
+
+  <section class="panel stats">
+    <div class="stat">
+      <span class="stat-label">❤ 生命值 HP</span>
+      <span class="stat-value" id="hp">10 / 10</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">⌛ 回合</span>
+      <span class="stat-value" id="turn">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">☠ 剩餘敵人</span>
+      <span class="stat-value" id="enemyCount">2</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">🏰 地下城</span>
+      <span class="stat-value" id="floor">1 / 3</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">地下城地圖</h2>
+    <div class="map-frame">
+      <pre id="map" aria-label="地下城文字地圖"></pre>
+    </div>
+
+    <div class="legend">
+      <span class="legend-item"><span class="symbol player-color">@</span> 玩家</span>
+      <span class="legend-item"><span class="symbol wall-color">#</span> 牆壁</span>
+      <span class="legend-item"><span class="symbol enemy-color">E</span> 敵人</span>
+      <span class="legend-item"><span class="symbol fountain-color">H</span> 治療泉</span>
+      <span class="legend-item"><span class="symbol exit-color">X</span> 出口</span>
+      <span class="legend-item"><span class="symbol floor-color">.</span> 地板</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div id="message" role="status" aria-live="polite">
+      <span class="message-title">冒險開始！</span>
+      找到治療泉水，並前往出口。
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="controls-layout">
+      <div>
+        <h2 class="section-title">觸控方向</h2>
+        <div class="dpad">
+          <button class="direction up" data-dir="up" aria-label="向上">↑</button>
+          <button class="direction left" data-dir="left" aria-label="向左">←</button>
+          <button class="direction down" data-dir="down" aria-label="向下">↓</button>
+          <button class="direction right" data-dir="right" aria-label="向右">→</button>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="section-title">鍵盤操作</h2>
+        <div class="keyboard-help">
+          <div><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></div>
+          <div>或使用鍵盤方向鍵</div>
+          <div>↑ 向上　↓ 向下</div>
+          <div>← 向左　→ 向右</div>
+          <div style="margin-top:8px">
+            每次成功移動或攻擊都會消耗一回合。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="action-button primary" id="restart">↻ 重新開始</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2 class="section-title">冒險規則</h2>
+    <ul class="rules">
+      <li>總共三層，越往下敵人越多，地圖也越複雜。</li>
+      <li>走到 <strong>H 治療泉水</strong>，立即恢復至滿血 10 HP；每層限用一次。</li>
+      <li>走到 <strong>X 出口</strong>，即可進入下一層；第三層出口即為勝利。</li>
+      <li>撞向 <strong>E 敵人</strong> 可攻擊敵人；每名敵人需要兩次攻擊才能擊敗。</li>
+      <li>敵人會嘗試靠近玩家，相鄰時攻擊，每次造成 1 點傷害。</li>
+      <li>撞牆不消耗回合，玩家無法穿過牆壁或敵人。</li>
+      <li>生命值歸零即告失敗。</li>
+    </ul>
+  </section>
+</main>
+
+<div class="overlay" id="overlay" role="dialog"
+     aria-modal="true" aria-labelledby="resultTitle">
+  <div class="result-card">
+    <h2 id="resultTitle">冒險結束</h2>
+    <p id="resultText"></p>
+    <button class="action-button primary" id="playAgain">再玩一次</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// =======================================
+// 遊戲基本設定
+// =======================================
+
+const MAX_HP = 10;
+const WIDTH = 15;
+const HEIGHT = 11;
+
+const START_PLAYER = { x: 1, y: 1 };
+const EXIT = { x: 13, y: 10 };
+
+// 三層地圖。
+// # 牆壁、. 地板、H 治療泉水、X 出口。
+const FLOORS = [
+  {
+    name: "新手地城",
+    map: [
+      "###############",
+      "#.....#.......#",
+      "#..H..#.......#",
+      "#.....#.......#",
+      "#.............#",
+      "###.####.######",
+      "#...#.........#",
+      "#...#....H....#",
+      "#.............#",
+      "#.............#",
+      "#############.#"
+    ],
+    enemies: [
+      { x: 9, y: 2, hp: 2 },
+      { x: 10, y: 6, hp: 2 }
+    ]
+  },
+  {
+    name: "危險地城",
+    map: [
+      "###############",
+      "#.....#.......#",
+      "#.....#.......#",
+      "#.H...#.......#",
+      "#.....#.......#",
+      "#.............#",
+      "#.###.###.###.#",
+      "#.............#",
+      "#.......#.....#",
+      "#.......#.....#",
+      "#############.#"
+    ],
+    enemies: [
+      { x: 8, y: 2, hp: 2 },
+      { x: 10, y: 4, hp: 2 },
+      { x: 5, y: 8, hp: 2 },
+      { x: 11, y: 8, hp: 2 }
+    ]
+  },
+  {
+    name: "最終地城",
+    map: [
+      "###############",
+      "#.....#.......#",
+      "#.....#.......#",
+      "#.H...#.......#",
+      "#.....#.......#",
+      "#.............#",
+      "#.###.###.###.#",
+      "#.............#",
+      "#...#.........#",
+      "#...#.........#",
+      "#############.#"
+    ],
+    enemies: [
+      { x: 8, y: 2, hp: 2 },
+      { x: 10, y: 3, hp: 2 },
+      { x: 11, y: 5, hp: 2 },
+      { x: 7, y: 8, hp: 2 },
+      { x: 11, y: 8, hp: 2 }
+    ]
+  }
+];
+
+const DIRECTIONS = {
+  up:    { x: 0, y: -1 },
+  down:  { x: 0, y: 1 },
+  left:  { x: -1, y: 0 },
+  right: { x: 1, y: 0 }
+};
+
+let map = [];
+let player = {};
+let enemies = [];
+let hp = MAX_HP;
+let turn = 0;
+let floorIndex = 0;
+let gameOver = false;
+let gameWon = false;
+let fountainUsed = false;
+
+// =======================================
+// HTML 元素
+// =======================================
+
+const mapElement = document.getElementById("map");
+const hpElement = document.getElementById("hp");
+const turnElement = document.getElementById("turn");
+const enemyCountElement = document.getElementById("enemyCount");
+const floorElement = document.getElementById("floor");
+const messageElement = document.getElementById("message");
+const overlay = document.getElementById("overlay");
+const resultTitle = document.getElementById("resultTitle");
+const resultText = document.getElementById("resultText");
+
+// =======================================
+// 座標與碰撞工具
+// =======================================
+
+function samePosition(a, b) {
+  return a.x === b.x && a.y === b.y;
+}
+
+function distance(a, b) {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}
+
+function isInside(x, y) {
+  return x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT;
+}
+
+function isWall(x, y) {
+  return !isInside(x, y) || map[y][x] === "#";
+}
+
+function getEnemyAt(x, y) {
+  return enemies.find(enemy =>
+    enemy.hp > 0 && enemy.x === x && enemy.y === y
+  );
+}
+
+function aliveEnemies() {
+  return enemies.filter(enemy => enemy.hp > 0);
+}
+
+// =======================================
+// 訊息顯示
+// =======================================
+
+function setMessage(title, text) {
+  messageElement.replaceChildren();
+
+  const heading = document.createElement("span");
+  heading.className = "message-title";
+  heading.textContent = title;
+
+  messageElement.appendChild(heading);
+  messageElement.appendChild(document.createTextNode(text));
+}
+
+// =======================================
+// 初始化與樓層切換
+// =======================================
+
+function loadFloor(index) {
+  floorIndex = index;
+
+  const floorData = FLOORS[floorIndex];
+
+  map = floorData.map.map(row => row.split(""));
+
+  // 出口固定在右下角。
+  map[EXIT.y][EXIT.x] = "X";
+
+  player = { ...START_PLAYER };
+
+  enemies = floorData.enemies.map(enemy => ({
+    ...enemy
+  }));
+
+  // 每一層都有自己的治療泉水。
+  fountainUsed = false;
+
+  setMessage(
+    `進入第 ${floorIndex + 1} 層：${floorData.name}`,
+    floorIndex === 0
+      ? "冒險開始！找到泉水與出口，小心敵人。"
+      : "新的地下城更加危險，善用治療泉水！"
+  );
+
+  render();
+}
+
+function initGame() {
+  hp = MAX_HP;
+  turn = 0;
+  gameOver = false;
+  gameWon = false;
+
+  overlay.classList.remove("show");
+
+  loadFloor(0);
+}
+
+function nextFloor() {
+  if (floorIndex >= FLOORS.length - 1) {
+    endGame(true);
+    return;
+  }
+
+  loadFloor(floorIndex + 1);
+}
+
+// =======================================
+// 地圖繪製
+// =======================================
+
+function render() {
+  mapElement.replaceChildren();
+
+  for (let y = 0; y < HEIGHT; y++) {
+    for (let x = 0; x < WIDTH; x++) {
+      const span = document.createElement("span");
+      const tile = map[y][x];
+
+      if (player.x === x && player.y === y) {
+        span.className = "player-color";
+        span.textContent = "@";
+        span.title = "彩虹勇者";
+      } else {
+        const enemy = getEnemyAt(x, y);
+
+        if (enemy) {
+          span.className = "enemy-color";
+          span.textContent = "E";
+          span.title = `敵人 HP：${enemy.hp}`;
+        } else if (tile === "#") {
+          span.className = "wall-color";
+          span.textContent = "#";
+          span.title = "牆壁";
+        } else if (tile === "X") {
+          span.className = "exit-color";
+          span.textContent = "X";
+          span.title = "出口";
+        } else if (tile === "H") {
+          span.className = "fountain-color";
+          span.textContent = "H";
+          span.title = "治療泉水";
+        } else {
+          span.className = "floor-color";
+          span.textContent = ".";
+          span.title = "地板";
+        }
+      }
+
+      mapElement.appendChild(span);
+    }
+
+    if (y < HEIGHT - 1) {
+      mapElement.appendChild(document.createTextNode("\n"));
+    }
+  }
+
+  hpElement.textContent = `${hp} / ${MAX_HP}`;
+  hpElement.style.color = hp <= 3 ? "#ff7373" : "#7cf29a";
+
+  turnElement.textContent = String(turn);
+  enemyCountElement.textContent = String(aliveEnemies().length);
+
+  floorElement.textContent = `${floorIndex + 1} / ${FLOORS.length}`;
+}
+
+// =======================================
+// 勝負判定
+// =======================================
+
+function endGame(won) {
+  if (gameOver) return;
+
+  gameOver = true;
+  gameWon = won;
+
+  resultTitle.textContent = won
+    ? "🏆 三層地城完全攻略！"
+    : "☠ 冒險失敗";
+
+  resultText.textContent = won
+    ? `恭喜你通過全部 ${FLOORS.length} 層！\n總共經歷 ${turn} 個回合。\n剩餘生命值：${hp} / ${MAX_HP}`
+    : `你在第 ${floorIndex + 1} 層倒下了。\n總共經歷 ${turn} 個回合。\n再試一次，利用泉水活下去！`;
+
+  overlay.classList.add("show");
+  render();
+}
+
+function checkGameEnd() {
+  if (hp <= 0) {
+    hp = 0;
+    setMessage("冒險失敗！", "你的生命值已歸零。");
+    endGame(false);
+    return true;
+  }
+
+  return false;
+}
+
+// =======================================
+// 治療泉水
+// =======================================
+
+function useFountain() {
+  if (map[player.y][player.x] !== "H") {
+    return false;
+  }
+
+  if (fountainUsed) {
+    return false;
+  }
+
+  const oldHP = hp;
+
+  hp = MAX_HP;
+  fountainUsed = true;
+
+  // 泉水使用後變成普通地板，不可重複補血。
+  map[player.y][player.x] = ".";
+
+  const restored = hp - oldHP;
+
+  setMessage(
+    "💧 治療泉水生效！",
+    restored > 0
+      ? `恢復了 ${restored} 點 HP！目前生命值 ${hp} / ${MAX_HP}。`
+      : `你的 HP 已經滿了！泉水已經使用。`
+  );
+
+  return true;
+}
+
+// =======================================
+// 玩家移動與攻擊
+// =======================================
+
+function movePlayer(directionName) {
+  if (gameOver) return;
+
+  const direction = DIRECTIONS[directionName];
+  if (!direction) return;
+
+  const nextX = player.x + direction.x;
+  const nextY = player.y + direction.y;
+
+  // 牆壁與地圖邊界不可通過。
+  if (isWall(nextX, nextY)) {
+    setMessage("前方受阻", "這裡是牆壁，換個方向試試。");
+    return;
+  }
+
+  const enemy = getEnemyAt(nextX, nextY);
+
+  // 攻擊敵人，不直接走入敵人格子。
+  if (enemy) {
+    enemy.hp -= 1;
+    turn++;
+
+    if (enemy.hp <= 0) {
+      setMessage("敵人被擊敗！", "你打倒了一名敵人。");
+    } else {
+      setMessage(
+        "發動攻擊！",
+        `敵人剩餘 ${enemy.hp} HP，再攻擊一次即可擊敗。`
+      );
+    }
+
+    render();
+
+    if (!checkGameEnd()) {
+      enemyTurn();
+    }
+
+    render();
+    checkGameEnd();
+    return;
+  }
+
+  // 成功移動。
+  player.x = nextX;
+  player.y = nextY;
+  turn++;
+
+  // 先處理出口，切換樓層時不讓舊樓層敵人追擊。
+  if (samePosition(player, EXIT)) {
+    render();
+
+    if (floorIndex === FLOORS.length - 1) {
+      setMessage("最終出口！", "你成功逃離全部三層地下城！");
+      endGame(true);
+    } else {
+      setMessage("找到出口！", "你準備進入下一層地下城。");
+      nextFloor();
+    }
+
+    return;
+  }
+
+  // 進入泉水格就立即補血。
+  const healed = useFountain();
+
+  if (!healed) {
+    setMessage("移動成功", "你前進了一格，敵人開始行動。");
+  }
+
+  render();
+
+  if (!checkGameEnd()) {
+    enemyTurn();
+  }
+
+  render();
+  checkGameEnd();
+}
+
+// =======================================
+// 敵人回合
+// =======================================
+
+function enemyTurn() {
+  if (gameOver) return;
+
+  const messages = [];
+
+  const directions = [
+    DIRECTIONS.up,
+    DIRECTIONS.down,
+    DIRECTIONS.left,
+    DIRECTIONS.right
+  ];
+
+  for (const enemy of enemies) {
+    if (enemy.hp <= 0 || gameOver) continue;
+
+    const currentDistance = distance(enemy, player);
+
+    // 與玩家相鄰時直接攻擊。
+    if (currentDistance === 1) {
+      hp -= 1;
+      messages.push("敵人攻擊你，HP -1！");
+      continue;
+    }
+
+    // 只選擇不撞牆、不重疊且能接近玩家的格子。
+    const candidates = directions
+      .map(direction => ({
+        x: enemy.x + direction.x,
+        y: enemy.y + direction.y
+      }))
+      .filter(position => {
+        if (isWall(position.x, position.y)) return false;
+
+        if (samePosition(position, player)) return false;
+
+        if (getEnemyAt(position.x, position.y)) return false;
+
+        return distance(position, player) < currentDistance;
+      })
+      .sort((a, b) =>
+        distance(a, player) - distance(b, player)
+      );
+
+    if (candidates.length > 0) {
+      enemy.x = candidates[0].x;
+      enemy.y = candidates[0].y;
+    }
+  }
+
+  if (messages.length > 0) {
+    setMessage("敵人回合", messages.join("\n"));
+  } else {
+    setMessage("敵人回合", "敵人正在靠近，小心不要被包圍！");
+  }
+
+  if (hp <= 0) {
+    hp = 0;
+    checkGameEnd();
+  }
+}
+
+// =======================================
+// 鍵盤操作
+// =======================================
+
+document.addEventListener("keydown", event => {
+  const key = event.key.toLowerCase();
+
+  const keyMap = {
+    w: "up",
+    arrowup: "up",
+    s: "down",
+    arrowdown: "down",
+    a: "left",
+    arrowleft: "left",
+    d: "right",
+    arrowright: "right"
+  };
+
+  const direction = keyMap[key];
+
+  if (!direction) return;
+
+  event.preventDefault();
+
+  // 避免按住按鍵時快速連續移動。
+  if (event.repeat) return;
+
+  movePlayer(direction);
+});
+
+// =======================================
+// 觸控按鈕
+// =======================================
+
+document.querySelectorAll("[data-dir]").forEach(button => {
+  button.addEventListener("click", () => {
+    movePlayer(button.dataset.dir);
+  });
+});
+
+// =======================================
+// 重新開始
+// =======================================
+
+document.getElementById("restart").addEventListener("click", initGame);
+document.getElementById("playAgain").addEventListener("click", initGame);
+
+// 開始遊戲。
+initGame();
+</script>
+</body>
+</html>
+```
